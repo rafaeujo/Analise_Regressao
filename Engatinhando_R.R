@@ -1,22 +1,21 @@
-install.packages("car")
 library(car)
 RNGkind('Marsaglia')
 set.seed(1234)
 
+library(MASS)
 #Simulando Regressão Linear
 
 #Definindo parâmetros e variáveis
 
 REP <- 10000
-n <- 50
 
 beta0 <- 3
 beta1 <- 5
-
+ 
 #Definindo a função
 
-Simulando <- function(){
-  erro <- rnorm(n)
+Simulando <- function(n){
+  erro <- rnorm(lapn)
   x <- runif(n)
   y <- beta0 + beta1*x + erro
   fit <- lm(y~x)
@@ -24,6 +23,102 @@ Simulando <- function(){
 }
 
 repli <- replicate(REP, Simulando())
+
+#######################################################################################
+
+#R-quadrado ajustado
+Rquadrados <- function(n){
+  erro <- rnorm(n)
+  x <- runif(n)
+  y <- beta0 + beta1*x + erro
+  fit <- lm(y~x)
+  return(summary(fit)$adj.r.squared)}
+
+nv <- c(10,50,100,1000)
+# Aplicar a função para cada n em nv usando lapply()
+resultados <- lapply(nv, function(n) {
+  replicate(REP, Rquadrados(n))
+})
+
+# Nomear os resultados para referência
+names(resultados) <- paste0("n=", nv)
+
+# Visualização (histogramas e QQ-plots)
+par(mfrow = c(2, 2))  # Divide a janela gráfica em 2x2
+
+# Loop para plotar histogramas e QQ-plots
+for (i in seq_along(resultados)) {
+  # Histograma
+  hist(resultados[[i]], 
+       main = paste("Histograma - n =", nv[i]),
+       xlab = "R² Ajustado", 
+       col = "lightblue",
+       breaks = 20)
+  
+  ajuste_mle <- fitdistr(resultado[1], "beta", 
+                         start = list(shape1 = 1, shape2 = 1))
+  ajuste_mle$estimate
+  
+  # QQ-Plot (usando car::qqPlot para linhas de referência)
+  car::qqPlot(resultados[[i]], 
+              main = paste("QQ-Plot - n =", nv[i]),
+              ylab = "R² Ajustado Amostral",
+              xlab = "Quantis Teóricos Normais",
+              distribution = 'beta')
+}
+
+par(mfrow = c(1, 1))  # Restaura o layout padrão
+
+#######################################################################################
+
+#Fazendo R-quadrado com T
+
+# Função para calcular R² ajustado com erros ~ t(3)
+R2_ajustado_t <- function(n) {
+  erro <- rt(n, df = 3)  # Erro com distribuição t-Student (gl=3)
+  x <- runif(n)
+  y <- beta0 + beta1 * x + erro
+  fit <- lm(y ~ x)
+  return(summary(fit)$adj.r.squared)
+}
+
+# Parâmetros
+REP <- 1000  # Número de replicações
+nv <- c(10, 50, 100, 1000)  # Tamanhos amostrais
+
+# Simulação para cada n
+resultados <- lapply(nv, function(n) {
+  replicate(REP, R2_ajustado_t(n))
+})
+names(resultados) <- paste0("n=", nv)
+
+# Visualização
+library(car)
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1))  # Ajuste de margens
+
+for (i in seq_along(resultados)) {
+  # Histograma
+  hist(resultados[[i]], 
+       main = paste("t(3) - n =", nv[i]),
+       xlab = "R² Ajustado", 
+       col = "lightgreen",
+       breaks = 20)
+  
+  # QQ-Plot
+  qqPlot(resultados[[i]], 
+         main = paste("QQ-Plot (t) - n =", nv[i]),
+         ylab = "R² Ajustado",
+         col = "darkgreen",
+         envelope = FALSE)
+}
+
+par(mfrow = c(1, 1))  # Reset layout
+
+
+#######################################################################################
+
+hist(replirquad)
+qqPlot(replirquad)
 
 #Análises
 
