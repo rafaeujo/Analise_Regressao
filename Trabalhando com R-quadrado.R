@@ -12,8 +12,10 @@ set.seed(1305)
 REP <- 10000
 beta0 <- 3
 beta1 <- 5
+n <- c(10,50,100,1000)
 
 #Definindo a função
+set.seed(1305)
 Rquadrados <- function(n){
   erro <- rnorm(n)
   x <- runif(n)
@@ -22,23 +24,15 @@ Rquadrados <- function(n){
   return(summary(fit)$adj.r.squared)}
 
 #Simulando para diferentes tamanhos de amostras
-n10 <- replicate(REP, Rquadrados(10))
-n50 <- replicate(REP, Rquadrados(50))
-n100 <- replicate(REP, Rquadrados(100))
-n1000 <- replicate(REP, Rquadrados(1000))
 
 rquadreps <- data.frame(
-  "n = 10" = n10,
-  "n = 50" = n50,
-  "n = 100" = n100,
-  "n = 1000" = n1000
+  "n10" = replicate(REP, Rquadrados(n[1])),
+  "n50" = replicate(REP, Rquadrados(n[2])),
+  "n100" = replicate(REP, Rquadrados(n[3])),
+  "n1000" = replicate(REP, Rquadrados(n[4]))
 )
 
 write.csv(rquadreps, file = "resultados_r2_ajustado.csv", row.names = TRUE)
-
-rquadreps <- read.csv("resultados_r2_ajustado.csv")
-colnames(rquadreps) <- c("","n10", "n50", "n100", "n1000")
-
 
 #Testando a distribuição de R-quadrado
 # Distribuição Beta ajustada aos R² simulados
@@ -145,3 +139,78 @@ par(mfrow = c(2, 2), mar = c(4, 4, 2.5, 1))
 for (col in colunas_r2) {
   plot_qq_r2(col, resultados_ajuste)
 }
+
+#Calculando as modas empíricas
+moda_continua <- function(x) {
+  d <- density(x)  # estima a densidade
+  x_moda <- d$x[which.max(d$y)]  # pega o x onde a densidade é máxima
+  return(x_moda)}
+
+# Função da moda teórica da Beta
+moda_teorica <- function(a, b) {
+  if (a > 1 && b > 1) {
+    return((a - 1) / (a + b - 2))
+  } else {
+    return(NA)
+  }
+}
+
+
+moda_HDI <- function(x, conf = 0.95) {
+  x <- x[x > 0 & x < 1]  # garantir valores válidos
+  d <- density(x)
+  dx <- d$x[2] - d$x[1]
+  
+  # Número de pontos que compõem a área de interesse
+  n_intervalo <- floor(conf * length(d$y))
+  
+  # Todos os intervalos possíveis de comprimento n_intervalo
+  intervalos <- embed(d$x, n_intervalo)[, c(n_intervalo, 1)]
+  areas <- vapply(1:(length(d$y) - n_intervalo + 1), function(i) {
+    sum(d$y[i:(i + n_intervalo - 1)]) * dx
+  }, numeric(1))
+  
+  # Escolhe o intervalo com maior área (equivale ao menor comprimento com maior densidade)
+  melhor <- which.max(areas)
+  IC <- intervalos[melhor, ]
+  
+  moda_idx <- which.max(d$y)
+  moda <- d$x[moda_idx]
+  
+  return(list(
+    moda = moda,
+    IC = IC,
+    densidade = d
+  ))
+}
+
+# Aplica a nova função moda_HDI a cada coluna de rquadreps
+resultados_modas <- lapply(rquadreps, moda_HDI)
+
+# Constrói o data.frame com os resultados
+modas_r2_densidade <- data.frame(
+  n = as.integer(gsub("n", "", names(rquadreps))),  # extrai os tamanhos amostrais
+  moda_empirica = sapply(resultados_modas, function(res) res$moda),
+  IC_lower = sapply(resultados_modas, function(res) res$IC[1]),
+  IC_upper = sapply(resultados_modas, function(res) res$IC[2]),
+  moda_teorica = mapply(moda_teorica, tabela_resultados$a, tabela_resultados$b)
+)
+
+# Exibe os resultados
+print(modas_r2_densidade)
+
+
+d_n10 <- density(rquadreps$n10)
+plot(d_n10, main = "Densidade R² Ajustado (n = 10)")
+abline(v = moda_intervalo_densidade(rquadreps$n10)$moda, col = "blue", lty = 2)
+
+
+summary(rquadreps$n10)
+hist(rquadreps$n10, breaks = 100, main = "Histograma do R² Ajustado (n = 10)")
+
+# Registrando as modas empíricas e teoricas
+modas_r2 <- data.frame(n,
+  moda_empirica = c(moda_continua(rquadreps$n10), moda_continua(rquadreps$n50),
+           moda_continua(rquadreps$n100), moda_continua(rquadreps$n1000)),
+  moda_t = mapply(moda_teorica, tabela_resultados$a, tabela_resultados$b))
+
