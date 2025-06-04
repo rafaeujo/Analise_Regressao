@@ -6,12 +6,12 @@ library(MASS)
 
 #Estabelecimento dos números aleatórios
 RNGkind('Marsaglia')
-set.seed(1305)
 
 #Definindo parâmetros iniciais e variáveis
 REP <- 10000
 beta0 <- 3
 beta1 <- 5
+n <- c(10,50,100,1000)
 
 #Definindo a função
 Rquadrados <- function(n){
@@ -22,22 +22,17 @@ Rquadrados <- function(n){
   return(summary(fit)$adj.r.squared)}
 
 #Simulando para diferentes tamanhos de amostras
-n10 <- replicate(REP, Rquadrados(10))
-n50 <- replicate(REP, Rquadrados(50))
-n100 <- replicate(REP, Rquadrados(100))
-n1000 <- replicate(REP, Rquadrados(1000))
+set.seed(1305)
 
-rquadreps <- data.frame(
-  "n = 10" = n10,
-  "n = 50" = n50,
-  "n = 100" = n100,
-  "n = 1000" = n1000
+system.time(rquadreps <- data.frame(
+  "n10" = replicate(REP, Rquadrados(n[1])),
+  "n50" = replicate(REP, Rquadrados(n[2])),
+  "n100" = replicate(REP, Rquadrados(n[3])),
+  "n1000" = replicate(REP, Rquadrados(n[4]))
 )
-
+)
 write.csv(rquadreps, file = "resultados_r2_ajustado.csv", row.names = TRUE)
-
 rquadreps <- read.csv("resultados_r2_ajustado.csv")
-colnames(rquadreps) <- c("","n10", "n50", "n100", "n1000")
 
 
 #Testando a distribuição de R-quadrado
@@ -80,19 +75,13 @@ ajustar_beta_para_r2 <- function(r2) {
   return(list(a = a_hat, b = b_hat, IC_a = IC_a, IC_b = IC_b))
 }
 
-# Ajustando a distribuição Beta para cada conjunto de R² simulado
-ajuste_n10   <- ajustar_beta_para_r2(rquadreps$n10)
-ajuste_n50   <- ajustar_beta_para_r2(rquadreps$n50)
-ajuste_n100  <- ajustar_beta_para_r2(rquadreps$n100)
-ajuste_n1000 <- ajustar_beta_para_r2(rquadreps$n1000)
-
 # Guardando os ajustes em uma lista nomeada
-resultados_ajuste <- list(
-  "10" = ajuste_n10,
-  "50" = ajuste_n50,
-  "100" = ajuste_n100,
-  "1000" = ajuste_n1000
-)
+system.time(resultados_ajuste <- list(
+  "10" = ajustar_beta_para_r2(rquadreps$n10),
+  "50" = ajustar_beta_para_r2(rquadreps$n50),
+  "100" = ajustar_beta_para_r2(rquadreps$n100),
+  "1000" = ajustar_beta_para_r2(rquadreps$n1000)
+))
 
 # Montando tabela com os resultados
 tabela_resultados <- do.call(rbind, lapply(names(resultados_ajuste), function(n) {
