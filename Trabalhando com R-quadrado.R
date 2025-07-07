@@ -32,8 +32,6 @@ rquadreps <- data.frame(
   "n1000" = replicate(REP, Rquadrados(n[4]))
 )
 
-write.csv(rquadreps, file = "resultados_r2_ajustado.csv", row.names = TRUE)
-
 #Testando a distribuição de R-quadrado
 # Distribuição Beta ajustada aos R² simulados
 
@@ -196,21 +194,4 @@ modas_r2_densidade <- data.frame(
   moda_teorica = mapply(moda_teorica, tabela_resultados$a, tabela_resultados$b)
 )
 
-# Exibe os resultados
-print(modas_r2_densidade)
-
-
-d_n10 <- density(rquadreps$n10)
-plot(d_n10, main = "Densidade R² Ajustado (n = 10)")
-abline(v = moda_intervalo_densidade(rquadreps$n10)$moda, col = "blue", lty = 2)
-
-
-summary(rquadreps$n10)
-hist(rquadreps$n10, breaks = 100, main = "Histograma do R² Ajustado (n = 10)")
-
-# Registrando as modas empíricas e teoricas
-modas_r2 <- data.frame(n,
-  moda_empirica = c(moda_continua(rquadreps$n10), moda_continua(rquadreps$n50),
-           moda_continua(rquadreps$n100), moda_continua(rquadreps$n1000)),
-  moda_t = mapply(moda_teorica, tabela_resultados$a, tabela_resultados$b))
 
