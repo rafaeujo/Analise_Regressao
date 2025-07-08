@@ -1,4 +1,11 @@
 #Definindo a função para erros t
+
+#Definindo parâmetros iniciais e variáveis
+REP <- 10000
+beta0 <- 3
+beta1 <- 5
+n <- c(10,50,100,1000)
+
 set.seed(1305)
 RquadradosT <- function(n){
   erro <- rt(n,5)
@@ -16,7 +23,8 @@ rquadrepsT <- data.frame(
   "n1000" = replicate(REP, RquadradosT(n[4]))
 )
 
-#Testando a distribuição de R-quadrado
+write.csv(rquadrepsT, "rquadrepsT")
+# Testando a distribuição de R-quadrado
 # Distribuição Beta ajustada aos R² simulados
 
 # Função de verossimilhança negativa para a distribuição Beta
@@ -29,7 +37,7 @@ Log_veross_neg <- function(par, x) {
 
 # Ajustando a distribuição Beta aos R² simulados
 ajustar_beta_para_r2 <- function(r2) {
-  r2 <- r2[r2 > 0 & r2 < 1]  
+  r2 <- r2[r2 > 0 & r2 < 1]
   
   mu <- mean(r2)
   sigma2 <- var(r2)
@@ -48,7 +56,7 @@ ajustar_beta_para_r2 <- function(r2) {
   a_hat <- ajuste$par[1]
   b_hat <- ajuste$par[2]
   
-  hess_inv <- solve(ajusteT$hessian)
+  hess_inv <- solve(ajuste$hessian)
   se <- sqrt(diag(hess_inv))
   IC_a <- a_hat + c(-1.96, 1.96) * se[1]
   IC_b <- b_hat + c(-1.96, 1.96) * se[2]
@@ -56,16 +64,11 @@ ajustar_beta_para_r2 <- function(r2) {
   return(list(a = a_hat, b = b_hat, IC_a = IC_a, IC_b = IC_b))
 }
 
-#Tabelando os valores de a e b
-tabela_resultadosT <- do.call(rbind, lapply(list(
-  "10" = rquadrepsT$n10,
-  "50" = rquadrepsT$n50,
-  "100" = rquadrepsT$n100,
-  "1000" = rquadrepsT$n1000
-), function(dados) {
-  ajuste <- ajustar_beta_para_r2(dados)
+# Tabelando os valores de a e b
+tabela_resultadosT <- do.call(rbind, lapply(names(rquadrepsT), function(nome) {
+  ajuste <- ajustar_beta_para_r2(rquadrepsT[[nome]])
   data.frame(
-    n = as.integer(names(dados)),
+    n = as.integer(sub("n", "", nome)),  # Remove o "n" e converte para inteiro
     a = ajuste$a,
     a_lower = ajuste$IC_a[1],
     a_upper = ajuste$IC_a[2],
@@ -74,7 +77,6 @@ tabela_resultadosT <- do.call(rbind, lapply(list(
     b_upper = ajuste$IC_b[2]
   )
 }))
-
 
 # Função modificada para calcular os parâmetros beta sob demanda
 plot_qq_r2 <- function(nome_coluna, dados_r2) {
@@ -93,7 +95,7 @@ plot_qq_r2 <- function(nome_coluna, dados_r2) {
     distribution = "beta",
     shape1 = a_hat,
     shape2 = b_hat,
-    main = paste("QQ Plot para R² simulado (", nome_coluna, ")"),
+    main = paste("QQ Plot para R² simulado erros T (", nome_coluna, ")"),
     xlab = "Quantis Teóricos da Beta",
     ylab = "Quantis Amostrais do R²",
     col = "black",
@@ -108,6 +110,8 @@ par(mfrow = c(2, 2), mar = c(4, 4, 2.5, 1))
 for (col in c("n10", "n50", "n100", "n1000")) {
   plot_qq_r2(col, rquadrepsT)
 }
+
+
 #Calculando as modas empíricas
 moda_continua <- function(x) {
   d <- density(x)  # estima a densidade
@@ -161,7 +165,6 @@ modas_r2_densidadT <- data.frame(
   moda_empirica = sapply(resultados_modasT, function(res) res$moda),
   IC_lower = sapply(resultados_modasT, function(res) res$IC[1]),
   IC_upper = sapply(resultados_modasT, function(res) res$IC[2]),
-  moda_teorica = mapply(moda_teorica, tabela_resultados$a, tabela_resultados$b)
+  moda_teorica = mapply(moda_teorica, tabela_resultadosT$a, tabela_resultados$b)
 )
 
-#Mexendo na T
